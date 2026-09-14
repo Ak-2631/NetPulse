@@ -134,7 +134,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <h3 className="text-lg font-semibold mb-4">Host Interface Traffic</h3>
-          <p className="text-xs text-slate-500 mb-6">Traffic measured on {traffic?.interface || 'active interface'}</p>
+          <p className="text-xs text-slate-500 mb-6">Total traffic measured across all active host interfaces</p>
           <div className="flex space-x-6 mb-6">
             <div className="flex items-center space-x-2">
               <ArrowDownRight className="text-green-400" />
