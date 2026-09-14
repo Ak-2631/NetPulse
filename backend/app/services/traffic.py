@@ -13,18 +13,9 @@ def get_host_traffic() -> dict:
     sys_info = get_system_network_info()
     active_interface = sys_info.get("active_interface")
     
-    # We use psutil to get per-interface stats. If we want total, we can use pernic=False.
-    # The requirement says "Host/Interface Traffic", so we try to use the active interface, 
-    # or fallback to total host traffic.
-    
-    try:
-        io_counters = psutil.net_io_counters(pernic=True)
-        if active_interface in io_counters:
-            current_net_io = io_counters[active_interface]
-        else:
-            current_net_io = psutil.net_io_counters() # Total
-    except Exception:
-        current_net_io = psutil.net_io_counters()
+    # We use psutil to get total host stats. 
+    # The requirement says "Host/Interface Traffic", meaning the traffic of this PC, not the whole LAN.
+    current_net_io = psutil.net_io_counters()
         
     bytes_sent = current_net_io.bytes_sent
     bytes_recv = current_net_io.bytes_recv
