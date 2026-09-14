@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAlerts, acknowledgeAlert } from '../services/api';
-import { ShieldAlert, CheckCircle, Clock } from 'lucide-react';
+import { ShieldAlert, CheckCircle, Clock, Server } from 'lucide-react';
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
