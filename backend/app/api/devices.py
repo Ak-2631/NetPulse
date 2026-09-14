@@ -1,0 +1,59 @@
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from sqlalchemy.orm import Session
+from typing import List
+from datetime import datetime
+from app.core.database import get_db, SessionLocal
+from app.models import models
+from app.schemas import schemas
+from app.services.system_info import get_system_network_info
+from app.services.discovery import scan_network
+
+router = APIRouter()
+
+def run_background_scan(subnet: str):
+    devices = scan_network(subnet)
+    db = SessionLocal()
+    try:
+        for d in devices:
+            # Check if device exists
+            existing = db.query(models.Device).filter(models.Device.ip_address == d["ip"]).first()
+            if existing:
+                if d["mac"] != "Unknown":
+                    existing.mac_address = d["mac"]
+                if d["hostname"] != "Unknown":
+                    existing.hostname = d["hostname"]
+                existing.status = "ONLINE"
+                existing.last_seen = datetime.utcnow()
+            else:
+                new_dev = models.Device(
+                    ip_address=d["ip"],
+                    mac_address=d["mac"] if d["mac"] != "Unknown" else None,
+                    hostname=d["hostname"] if d["hostname"] != "Unknown" else None,
+                    status="ONLINE"
+                )
+                db.add(new_dev)
+        db.commit()
+    finally:
+        db.close()
+
+@router.post("/scan")
+def trigger_scan(background_tasks: BackgroundTasks):
+    sys_info = get_system_network_info()
+    subnet = sys_info.get("subnet")
+    if not subnet:
+        raise HTTPException(status_code=500, detail="Could not determine local subnet")
+    
+    background_tasks.add_task(run_background_scan, subnet)
+    return {"message": f"Scan started on {subnet} in the background."}
+
+@router.get("/", response_model=List[schemas.DeviceResponse])
+def get_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    devices = db.query(models.Device).offset(skip).limit(limit).all()
+    return devices
+
+@router.get("/{device_id}", response_model=schemas.DeviceResponse)
+def get_device(device_id: int, db: Session = Depends(get_db)):
+    device = db.query(models.Device).filter(models.Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return device
