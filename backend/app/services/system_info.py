@@ -77,11 +77,21 @@ def get_system_network_info():
     logger.info(f"Network: {subnet}")
     logger.info(f"Gateway: {gateway}")
 
+    # Detect pcap availability for the UI
+    pcap_available = True
+    try:
+        from scapy.all import conf
+        # L2socket will throw if pcap is completely missing on Windows
+        import scapy.arch.pcapdnet
+    except Exception:
+        pcap_available = False
+
     return {
         "hostname": hostname,
         "local_ip": local_ip,
         "mac_address": mac_address,
         "active_interface": active_interface,
         "subnet": subnet,
-        "default_gateway": gateway
+        "default_gateway": gateway,
+        "pcap_available": pcap_available
     }

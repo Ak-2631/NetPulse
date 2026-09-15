@@ -11,7 +11,8 @@ from app.services.discovery import scan_network
 router = APIRouter()
 
 def run_background_scan(subnet: str):
-    devices = scan_network(subnet)
+    scan_result = scan_network(subnet)
+    devices = scan_result["devices"]
     db = SessionLocal()
     try:
         for d in devices:

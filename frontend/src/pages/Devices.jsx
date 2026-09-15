@@ -59,7 +59,7 @@ export default function Devices() {
         </button>
       </div>
       
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center text-sm">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center text-sm mb-4">
         <div className="flex space-x-6">
           <div>
             <span className="text-slate-500">Active Interface:</span>
@@ -76,8 +76,21 @@ export default function Devices() {
         </div>
       </div>
 
+      {sysInfo && sysInfo.pcap_available === false && (
+        <div className="p-4 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-yellow-200 mb-4 text-sm">
+          <strong>Discovery Mode: ICMP Fallback.</strong> Npcap is not installed on this system. Devices are being discovered via Ping instead of ARP. 
+          Layer-2 MAC addresses cannot be retrieved through ICMP scanning.
+        </div>
+      )}
+      
+      {sysInfo && sysInfo.pcap_available === true && (
+        <div className="p-4 bg-green-900/30 border border-green-500/50 rounded-lg text-green-200 mb-4 text-sm">
+          <strong>Discovery Mode: ARP (Scapy).</strong> Npcap is detected. Full Layer-2 discovery and MAC address resolution is active.
+        </div>
+      )}
+
       {message && (
-        <div className={`p-4 border rounded-lg ${
+        <div className={`p-4 border rounded-lg mb-4 ${
           message.includes('failed') ? 'bg-red-900/40 border-red-500/50 text-red-200' : 'bg-blue-900/40 border-blue-500/50 text-blue-200'
         }`}>
           {message}
@@ -115,7 +128,9 @@ export default function Devices() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-slate-200">{device.ip_address}</div>
-                      <div className="text-xs text-slate-500">{device.mac_address || 'Unknown MAC'}</div>
+                      <div className="text-xs text-slate-500">
+                        {device.mac_address ? device.mac_address : (sysInfo?.pcap_available ? 'Unknown MAC' : 'MAC Unavailable (ICMP Mode)')}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${

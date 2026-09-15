@@ -8,31 +8,33 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def discover_arp(subnet: str) -> List[Dict]:
-    """Discover devices on the subnet using ARP requests."""
+def discover_arp(subnet: str) -> tuple[List[Dict], bool]:
+    """Discover devices on the subnet using ARP requests. Returns (devices, pcap_available)."""
     discovered = []
+    pcap_available = True
     try:
-        # Create ARP packet
         arp = ARP(pdst=subnet)
         ether = Ether(dst="ff:ff:ff:ff:ff:ff")
         packet = ether/arp
         
-        # Send packet and capture response
-        # timeout=2, verbose=0 to prevent printing to stdout
         result = srp(packet, timeout=2, verbose=0)[0]
         
         for sent, received in result:
             discovered.append({
                 "ip": received.psrc,
                 "mac": received.hwsrc,
-                "hostname": "Unknown" # Will resolve later
+                "hostname": "Unknown"
             })
     except Exception as e:
-        logger.error(f"ARP discovery failed: {e}")
-    return discovered
+        err_str = str(e).lower()
+        if "winpcap is not installed" in err_str or "layer 2" in err_str:
+            pcap_available = False
+            logger.warning("Npcap/WinPcap is not installed. ARP discovery is unavailable.")
+        else:
+            logger.error(f"ARP discovery failed: {e}")
+    return discovered, pcap_available
 
 def ping_host(ip: str) -> str | None:
-    """Ping a single host. Returns IP if online, else None."""
     try:
         delay = ping3.ping(ip, timeout=1)
         if delay is not None and delay is not False:
@@ -48,8 +50,6 @@ def discover_icmp(subnet: str) -> List[Dict]:
         network = ipaddress.IPv4Network(subnet, strict=False)
         hosts = [str(ip) for ip in network.hosts()]
         
-        # Don't ping the whole /24 sequentially, use ThreadPool
-        # If it's a large subnet, maybe limit it to /24 or first 256 hosts
         if network.num_addresses > 1024:
             logger.warning("Subnet too large for ICMP fallback scan, taking first 1024.")
             hosts = hosts[:1024]
@@ -69,28 +69,30 @@ def discover_icmp(subnet: str) -> List[Dict]:
     return discovered
 
 def resolve_hostname(ip: str) -> str:
-    """Attempt to resolve hostname from IP."""
     try:
         hostname, _, _ = socket.gethostbyaddr(ip)
         return hostname
     except Exception:
         return "Unknown"
 
-def scan_network(subnet: str) -> List[Dict]:
+def scan_network(subnet: str) -> Dict:
     """
-    Scan the network. Tries ARP first (requires admin/root or Npcap).
-    Falls back to ICMP if ARP returns nothing or fails.
+    Scan the network. Tries ARP first. 
+    If Npcap is missing or ARP fails, uses ICMP.
+    Returns dict with devices and the discovery mode used.
     """
     logger.info(f"Starting discovery on {subnet}")
-    devices = discover_arp(subnet)
     
-    if not devices:
-        logger.info("ARP discovery yielded 0 devices. Trying ICMP fallback...")
+    devices, pcap_available = discover_arp(subnet)
+    mode = "ARP/Scapy"
+    
+    if not pcap_available or not devices:
+        logger.info("Falling back to ICMP discovery...")
+        mode = "ICMP Fallback"
         devices = discover_icmp(subnet)
         
-    # Resolve hostnames for found devices
     for device in devices:
         device["hostname"] = resolve_hostname(device["ip"])
         
-    logger.info(f"Discovery complete. Found {len(devices)} devices.")
-    return devices
+    logger.info(f"Discovery complete. Found {len(devices)} devices using {mode}.")
+    return {"devices": devices, "mode": mode, "pcap_available": pcap_available}
