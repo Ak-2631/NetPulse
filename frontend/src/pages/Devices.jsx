@@ -76,18 +76,7 @@ export default function Devices() {
         </div>
       </div>
 
-      {sysInfo && sysInfo.pcap_available === false && (
-        <div className="p-4 bg-yellow-900/30 border border-yellow-500/50 rounded-lg text-yellow-200 mb-4 text-sm">
-          <strong>Discovery Mode: ICMP Fallback.</strong> Npcap is not installed on this system. Devices are being discovered via Ping instead of ARP. 
-          Layer-2 MAC addresses cannot be retrieved through ICMP scanning.
-        </div>
-      )}
-      
-      {sysInfo && sysInfo.pcap_available === true && (
-        <div className="p-4 bg-green-900/30 border border-green-500/50 rounded-lg text-green-200 mb-4 text-sm">
-          <strong>Discovery Mode: ARP (Scapy).</strong> Npcap is detected. Full Layer-2 discovery and MAC address resolution is active.
-        </div>
-      )}
+
 
       {message && (
         <div className={`p-4 border rounded-lg mb-4 ${
