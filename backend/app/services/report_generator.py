@@ -20,11 +20,11 @@ def generate_pdf_report(db: Session) -> bytes:
     story.append(Spacer(1, 12))
 
     # Overview
-    devices = db.query(models.Device).all()
+    devices = db.query(models.Device).filter(models.Device.is_in_latest_scan == True).all()
     online_count = sum(1 for d in devices if d.status == "ONLINE")
     
     story.append(Paragraph("System Overview", styles['Heading2']))
-    story.append(Paragraph(f"Total Discovered Devices: {len(devices)}", styles['Normal']))
+    story.append(Paragraph(f"Active Discovered Devices (Current Network): {len(devices)}", styles['Normal']))
     story.append(Paragraph(f"Currently Online: {online_count}", styles['Normal']))
     story.append(Spacer(1, 12))
 
@@ -49,7 +49,23 @@ def generate_pdf_report(db: Session) -> bytes:
 
     # Alerts Summary
     story.append(Paragraph("Recent Unresolved Alerts", styles['Heading2']))
-    alerts = db.query(models.Alert).filter(models.Alert.resolved == False).all()
+    from sqlalchemy import or_
+    device_ids = [d.id for d in devices]
+    
+    # Filter alerts: Unresolved AND (belongs to current devices OR is a system alert)
+    if device_ids:
+        alerts_query = db.query(models.Alert).filter(
+            models.Alert.resolved == False,
+            or_(models.Alert.device_id.in_(device_ids), models.Alert.device_id == None)
+        )
+    else:
+        alerts_query = db.query(models.Alert).filter(
+            models.Alert.resolved == False,
+            models.Alert.device_id == None
+        )
+        
+    alerts = alerts_query.all()
+    
     if alerts:
         alert_data = [["Type", "Severity", "Message"]]
         for a in alerts:
