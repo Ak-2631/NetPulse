@@ -1,4 +1,4 @@
-import { generateReport } from '../services/api';
+import { API_URL } from '../services/api';
 import { FileText, Download } from 'lucide-react';
 
 export default function Reports() {
@@ -13,13 +13,14 @@ export default function Reports() {
           Generate a comprehensive PDF report containing device status, health scores, alert history, and protocol analytics.
         </p>
         
-        <button 
-          onClick={generateReport}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold mx-auto transition-colors"
+        <a 
+          href={`${API_URL}/reports/generate`}
+          download="netpulse_report.pdf"
+          className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold mx-auto transition-colors"
         >
           <Download size={20} />
           <span>Download PDF Report</span>
-        </button>
+        </a>
       </div>
     </div>
   );

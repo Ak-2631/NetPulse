@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+export const API_URL = 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -28,20 +28,5 @@ export const getPacketStats = () => api.get('/packets/stats');
 
 export const getTopology = () => api.get('/topology');
 
-export const generateReport = async () => {
-  try {
-    const response = await api.get('/reports/generate', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'netpulse_report.pdf');
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Failed to generate report', error);
-  }
-};
 
 export default api;
