@@ -58,6 +58,7 @@ def monitoring_loop():
                     device.status = res["status"]
                     if res["status"] == "ONLINE":
                         device.last_seen = datetime.utcnow()
+                        device.is_in_latest_scan = True
             
             db.commit()
             db.close()
