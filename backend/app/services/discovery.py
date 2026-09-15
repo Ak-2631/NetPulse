@@ -74,10 +74,31 @@ def resolve_hostname(ip: str) -> str:
         return hostname
     except Exception:
         return "Unknown"
+def get_native_arp_cache() -> Dict[str, str]:
+    """Parse the OS native ARP cache to get MAC addresses."""
+    macs = {}
+    try:
+        import subprocess, re, platform
+        if platform.system() == "Windows":
+            out = subprocess.check_output("arp -a", shell=True).decode()
+            # Windows arp -a format: 192.168.1.1    00-11-22-33-44-55
+            matches = re.findall(r'(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F-]+)\s+', out)
+            for ip, mac in matches:
+                if mac != "---":
+                    macs[ip] = mac.replace("-", ":").lower()
+        else:
+            # Linux fallback
+            out = subprocess.check_output("arp -n", shell=True).decode()
+            matches = re.findall(r'(\d+\.\d+\.\d+\.\d+)\s+dev\s+\S+\s+lladdr\s+([0-9a-fA-F:]+)', out)
+            for ip, mac in matches:
+                macs[ip] = mac.lower()
+    except Exception as e:
+        logger.error(f"Failed to read native ARP cache: {e}")
+    return macs
 
 def scan_network(subnet: str) -> Dict:
     """
-    Scan the network. Tries ARP to get MACs, and ICMP to get IPs if ARP is restricted (e.g. AP isolation).
+    Scan the network. Tries ARP to get MACs, and ICMP to get IPs if ARP is restricted (e.g. Wi-Fi Npcap bug).
     """
     logger.info(f"Starting discovery on {subnet}")
     
@@ -87,32 +108,34 @@ def scan_network(subnet: str) -> Dict:
     # Create a mapping of IP to MAC from the ARP results
     arp_macs = {d["ip"]: d["mac"] for d in arp_devices}
     
-    # If ARP found very few devices (e.g., just the localhost due to Wi-Fi AP isolation)
-    # or if pcap is entirely unavailable, run the ICMP sweep to discover IPs.
+    # If ARP found very few devices (e.g., Npcap fails to inject raw frames on Windows Wi-Fi)
+    # run the ICMP sweep to discover IPs, which will force the OS to populate its native ARP cache!
     if not pcap_available or len(arp_devices) <= 2:
         if pcap_available:
-            logger.info("ARP discovery yielded few devices (possible AP isolation). Running ICMP sweep to find more IPs...")
-            mode = "ARP + ICMP (Hybrid)"
+            logger.info("ARP discovery yielded few devices (Npcap Wi-Fi injection limitation). Running ICMP sweep...")
+            mode = "ARP + ICMP (Hybrid Cache)"
         else:
             logger.info("Falling back to ICMP discovery...")
             mode = "ICMP Fallback"
             
         icmp_devices = discover_icmp(subnet)
         
-        # Merge ICMP IPs into the final list, using ARP MACs if available
-        final_devices = {}
+        # Now read the OS's native ARP cache (populated by the ICMP pings)
+        native_macs = get_native_arp_cache()
         
-        # First, add all ARP discovered devices
+        # Merge results
+        final_devices = {}
         for d in arp_devices:
             final_devices[d["ip"]] = d
             
-        # Then, add ICMP discovered devices (overwriting MAC only if it was Unknown)
         for d in icmp_devices:
             ip = d["ip"]
             if ip not in final_devices:
+                # Try Scapy ARP first, then Native ARP cache
+                mac = arp_macs.get(ip) or native_macs.get(ip) or "Unknown"
                 final_devices[ip] = {
                     "ip": ip,
-                    "mac": arp_macs.get(ip, "Unknown"),
+                    "mac": mac,
                     "hostname": "Unknown"
                 }
                 
@@ -120,8 +143,12 @@ def scan_network(subnet: str) -> Dict:
     else:
         devices = arp_devices
         
-    for device in devices:
-        device["hostname"] = resolve_hostname(device["ip"])
+    def _resolve_and_update(d):
+        d["hostname"] = resolve_hostname(d["ip"])
+
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        for d in devices:
+            executor.submit(_resolve_and_update, d)
         
     logger.info(f"Discovery complete. Found {len(devices)} devices using {mode}.")
     return {"devices": devices, "mode": mode, "pcap_available": pcap_available}
