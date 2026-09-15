@@ -7,7 +7,7 @@ from app.services.system_info import get_system_network_info
 router = APIRouter()
 
 @router.get("/")
-def get_topology(db: Session = Depends(get_db)):
+def get_topology(view: str = "current", db: Session = Depends(get_db)):
     """Returns inferred logical topology data for React Flow."""
     sys_info = get_system_network_info()
     gateway_ip = sys_info.get("default_gateway", "Unknown")
@@ -36,7 +36,10 @@ def get_topology(db: Session = Depends(get_db)):
     
     edges.append({"id": "e-gateway-host", "source": "gateway", "target": "monitoring_host", "animated": True})
     
-    devices = db.query(models.Device).all()
+    query = db.query(models.Device)
+    if view == "current":
+        query = query.filter(models.Device.is_in_latest_scan == True)
+    devices = query.all()
     
     x_pos = 100
     y_pos = 250

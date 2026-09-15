@@ -9,7 +9,7 @@ const api = axios.create({
 export const getSystemInfo = () => api.get('/system');
 export const getHealthCheck = () => api.get('/health');
 
-export const getDevices = () => api.get('/devices');
+export const getDevices = (view = 'current') => api.get(`/devices?view=${view}`);
 export const startScan = () => api.post('/devices/scan');
 
 export const getHealthScore = () => api.get('/metrics/health-score');
@@ -26,7 +26,7 @@ export const getPacketStatus = () => api.get('/packets/status');
 export const getRecentPackets = () => api.get('/packets/recent');
 export const getPacketStats = () => api.get('/packets/stats');
 
-export const getTopology = () => api.get('/topology');
+export const getTopology = (view = 'current') => api.get(`/topology?view=${view}`);
 
 
 export default api;

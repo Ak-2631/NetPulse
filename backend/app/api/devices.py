@@ -74,9 +74,11 @@ def trigger_scan(background_tasks: BackgroundTasks):
     return {"message": f"Scan started on {subnet} (Interface: {interface}) in the background."}
 
 @router.get("/", response_model=List[schemas.DeviceResponse])
-def get_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    # Only return devices that were present in the latest scan
-    devices = db.query(models.Device).filter(models.Device.is_in_latest_scan == True).offset(skip).limit(limit).all()
+def get_devices(view: str = "current", skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    query = db.query(models.Device)
+    if view == "current":
+        query = query.filter(models.Device.is_in_latest_scan == True)
+    devices = query.offset(skip).limit(limit).all()
     return devices
 
 @router.get("/{device_id}", response_model=schemas.DeviceResponse)

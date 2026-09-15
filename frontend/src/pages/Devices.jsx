@@ -6,27 +6,28 @@ export default function Devices() {
   const [devices, setDevices] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState('');
+  const [view, setView] = useState('current');
 
   const [sysInfo, setSysInfo] = useState(null);
 
-  const fetchData = async () => {
-    try {
-      const [devRes, sysRes] = await Promise.all([
-        getDevices(),
-        getSystemInfo()
-      ]);
-      setDevices(devRes.data);
-      setSysInfo(sysRes.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [devRes, sysRes] = await Promise.all([
+          getDevices(view),
+          getSystemInfo()
+        ]);
+        setDevices(devRes.data);
+        setSysInfo(sysRes.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [view]);
 
   const handleScan = async () => {
     setScanning(true);
@@ -46,7 +47,23 @@ export default function Devices() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Discovered Devices</h2>
+        <div className="flex items-center space-x-6">
+          <h2 className="text-3xl font-bold">Discovered Devices</h2>
+          <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+            <button 
+              onClick={() => setView('current')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'current' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              Current Network
+            </button>
+            <button 
+              onClick={() => setView('history')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              History
+            </button>
+          </div>
+        </div>
         <button 
           onClick={handleScan}
           disabled={scanning}

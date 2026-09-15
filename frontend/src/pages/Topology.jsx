@@ -8,11 +8,12 @@ export default function Topology() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [note, setNote] = useState('');
+  const [view, setView] = useState('current');
 
   useEffect(() => {
     const fetchTopology = async () => {
       try {
-        const res = await getTopology();
+        const res = await getTopology(view);
         setNodes(res.data.nodes);
         setEdges(res.data.edges);
         setNote(res.data.note);
@@ -21,12 +22,26 @@ export default function Topology() {
       }
     };
     fetchTopology();
-  }, []);
+  }, [view]);
 
   return (
     <div className="flex flex-col h-full space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold">Network Topology</h2>
+        <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+          <button 
+            onClick={() => setView('current')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'current' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            Live Topology
+          </button>
+          <button 
+            onClick={() => setView('history')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            Historical Snapshot
+          </button>
+        </div>
       </div>
 
       {note && (
