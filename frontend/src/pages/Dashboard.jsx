@@ -26,7 +26,7 @@ export default function Dashboard() {
       setDevices(devRes.data);
       setHealth(healthRes.data);
       setTraffic(trafRes.data);
-      setAlerts(alertRes.data.filter(a => !a.resolved));
+      setAlerts(alertRes.data.filter(a => !a.resolved && a.is_device_active));
 
       // Append to traffic history
       setTrafficHistory(prev => {
