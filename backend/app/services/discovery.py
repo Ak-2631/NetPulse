@@ -77,19 +77,48 @@ def resolve_hostname(ip: str) -> str:
 
 def scan_network(subnet: str) -> Dict:
     """
-    Scan the network. Tries ARP first. 
-    If Npcap is missing or ARP fails, uses ICMP.
-    Returns dict with devices and the discovery mode used.
+    Scan the network. Tries ARP to get MACs, and ICMP to get IPs if ARP is restricted (e.g. AP isolation).
     """
     logger.info(f"Starting discovery on {subnet}")
     
-    devices, pcap_available = discover_arp(subnet)
+    arp_devices, pcap_available = discover_arp(subnet)
     mode = "ARP/Scapy"
     
-    if not pcap_available or not devices:
-        logger.info("Falling back to ICMP discovery...")
-        mode = "ICMP Fallback"
-        devices = discover_icmp(subnet)
+    # Create a mapping of IP to MAC from the ARP results
+    arp_macs = {d["ip"]: d["mac"] for d in arp_devices}
+    
+    # If ARP found very few devices (e.g., just the localhost due to Wi-Fi AP isolation)
+    # or if pcap is entirely unavailable, run the ICMP sweep to discover IPs.
+    if not pcap_available or len(arp_devices) <= 2:
+        if pcap_available:
+            logger.info("ARP discovery yielded few devices (possible AP isolation). Running ICMP sweep to find more IPs...")
+            mode = "ARP + ICMP (Hybrid)"
+        else:
+            logger.info("Falling back to ICMP discovery...")
+            mode = "ICMP Fallback"
+            
+        icmp_devices = discover_icmp(subnet)
+        
+        # Merge ICMP IPs into the final list, using ARP MACs if available
+        final_devices = {}
+        
+        # First, add all ARP discovered devices
+        for d in arp_devices:
+            final_devices[d["ip"]] = d
+            
+        # Then, add ICMP discovered devices (overwriting MAC only if it was Unknown)
+        for d in icmp_devices:
+            ip = d["ip"]
+            if ip not in final_devices:
+                final_devices[ip] = {
+                    "ip": ip,
+                    "mac": arp_macs.get(ip, "Unknown"),
+                    "hostname": "Unknown"
+                }
+                
+        devices = list(final_devices.values())
+    else:
+        devices = arp_devices
         
     for device in devices:
         device["hostname"] = resolve_hostname(device["ip"])
