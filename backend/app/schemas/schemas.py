@@ -26,3 +26,4 @@ class SystemInfo(BaseModel):
     active_interface: str
     subnet: str
     default_gateway: str
+    pcap_available: bool
