@@ -36,6 +36,7 @@ def run_background_scan(subnet: str):
                     conflict = db.query(models.Device).filter(models.Device.ip_address == ip).first()
                     if conflict and conflict.id != existing.id:
                         conflict.ip_address = f"{conflict.ip_address}_stale_{conflict.id}"
+                        db.flush() # Force SQL execution order to prevent UNIQUE constraint failure
                     existing.ip_address = ip
                 
                 if mac and mac != "Unknown":
