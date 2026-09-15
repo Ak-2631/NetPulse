@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDevices, startScan } from '../services/api';
+import { getDevices, startScan, getSystemInfo } from '../services/api';
 import { Search, RefreshCw, Server, Clock } from 'lucide-react';
 
 export default function Devices() {
@@ -7,18 +7,24 @@ export default function Devices() {
   const [scanning, setScanning] = useState(false);
   const [message, setMessage] = useState('');
 
-  const fetchDevices = async () => {
+  const [sysInfo, setSysInfo] = useState(null);
+
+  const fetchData = async () => {
     try {
-      const res = await getDevices();
-      setDevices(res.data);
+      const [devRes, sysRes] = await Promise.all([
+        getDevices(),
+        getSystemInfo()
+      ]);
+      setDevices(devRes.data);
+      setSysInfo(sysRes.data);
     } catch (error) {
       console.error(error);
     }
   };
 
   useEffect(() => {
-    fetchDevices();
-    const interval = setInterval(fetchDevices, 5000);
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -29,7 +35,7 @@ export default function Devices() {
       const res = await startScan();
       setMessage(res.data.message);
     } catch (error) {
-      setMessage('Scan failed to start.');
+      setMessage(error.response?.data?.detail || 'Scan failed to start.');
     }
     setTimeout(() => {
       setScanning(false);
@@ -53,8 +59,27 @@ export default function Devices() {
         </button>
       </div>
       
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center text-sm">
+        <div className="flex space-x-6">
+          <div>
+            <span className="text-slate-500">Active Interface:</span>
+            <span className="ml-2 font-medium text-slate-200">{sysInfo?.active_interface || 'Detecting...'}</span>
+          </div>
+          <div>
+            <span className="text-slate-500">Local IP:</span>
+            <span className="ml-2 font-medium text-slate-200">{sysInfo?.local_ip || '...'}</span>
+          </div>
+          <div>
+            <span className="text-slate-500">Target Subnet:</span>
+            <span className="ml-2 font-medium text-blue-400">{sysInfo?.subnet || '...'}</span>
+          </div>
+        </div>
+      </div>
+
       {message && (
-        <div className="p-4 bg-blue-900/40 border border-blue-500/50 rounded-lg text-blue-200">
+        <div className={`p-4 border rounded-lg ${
+          message.includes('failed') ? 'bg-red-900/40 border-red-500/50 text-red-200' : 'bg-blue-900/40 border-blue-500/50 text-blue-200'
+        }`}>
           {message}
         </div>
       )}

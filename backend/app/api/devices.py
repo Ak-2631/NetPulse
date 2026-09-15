@@ -40,11 +40,16 @@ def run_background_scan(subnet: str):
 def trigger_scan(background_tasks: BackgroundTasks):
     sys_info = get_system_network_info()
     subnet = sys_info.get("subnet")
-    if not subnet:
-        raise HTTPException(status_code=500, detail="Could not determine local subnet")
+    interface = sys_info.get("active_interface")
+    
+    if not subnet or interface == "Unknown":
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Network detection failed. Cannot determine primary LAN subnet. Detected IP: {sys_info.get('local_ip')}"
+        )
     
     background_tasks.add_task(run_background_scan, subnet)
-    return {"message": f"Scan started on {subnet} in the background."}
+    return {"message": f"Scan started on {subnet} (Interface: {interface}) in the background."}
 
 @router.get("/", response_model=List[schemas.DeviceResponse])
 def get_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
