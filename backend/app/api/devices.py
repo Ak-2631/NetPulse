@@ -15,22 +15,43 @@ def run_background_scan(subnet: str):
     devices = scan_result["devices"]
     db = SessionLocal()
     try:
+        # Mark all devices as NOT in the latest scan
+        db.query(models.Device).update({models.Device.is_in_latest_scan: False})
+        
         for d in devices:
-            # Check if device exists
-            existing = db.query(models.Device).filter(models.Device.ip_address == d["ip"]).first()
+            mac = d.get("mac")
+            ip = d.get("ip")
+            hostname = d.get("hostname")
+            
+            existing = None
+            if mac and mac != "Unknown":
+                existing = db.query(models.Device).filter(models.Device.mac_address == mac).first()
+            
+            if not existing:
+                existing = db.query(models.Device).filter(models.Device.ip_address == ip).first()
+                
             if existing:
-                if d["mac"] != "Unknown":
-                    existing.mac_address = d["mac"]
-                if d["hostname"] != "Unknown":
-                    existing.hostname = d["hostname"]
+                if existing.ip_address != ip:
+                    # Prevent unique constraint failure if IP was reassigned
+                    conflict = db.query(models.Device).filter(models.Device.ip_address == ip).first()
+                    if conflict and conflict.id != existing.id:
+                        conflict.ip_address = f"{conflict.ip_address}_stale_{conflict.id}"
+                    existing.ip_address = ip
+                
+                if mac and mac != "Unknown":
+                    existing.mac_address = mac
+                if hostname and hostname != "Unknown":
+                    existing.hostname = hostname
                 existing.status = "ONLINE"
                 existing.last_seen = datetime.utcnow()
+                existing.is_in_latest_scan = True
             else:
                 new_dev = models.Device(
-                    ip_address=d["ip"],
-                    mac_address=d["mac"] if d["mac"] != "Unknown" else None,
-                    hostname=d["hostname"] if d["hostname"] != "Unknown" else None,
-                    status="ONLINE"
+                    ip_address=ip,
+                    mac_address=mac if mac != "Unknown" else None,
+                    hostname=hostname if hostname != "Unknown" else None,
+                    status="ONLINE",
+                    is_in_latest_scan=True
                 )
                 db.add(new_dev)
         db.commit()
@@ -54,7 +75,8 @@ def trigger_scan(background_tasks: BackgroundTasks):
 
 @router.get("/", response_model=List[schemas.DeviceResponse])
 def get_devices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    devices = db.query(models.Device).offset(skip).limit(limit).all()
+    # Only return devices that were present in the latest scan
+    devices = db.query(models.Device).filter(models.Device.is_in_latest_scan == True).offset(skip).limit(limit).all()
     return devices
 
 @router.get("/{device_id}", response_model=schemas.DeviceResponse)

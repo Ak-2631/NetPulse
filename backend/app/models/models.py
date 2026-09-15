@@ -12,6 +12,7 @@ class Device(Base):
     status = Column(String, default="OFFLINE") # ONLINE, OFFLINE
     first_seen = Column(DateTime, default=datetime.utcnow)
     last_seen = Column(DateTime, default=datetime.utcnow)
+    is_in_latest_scan = Column(Boolean, default=True)
     
     metrics = relationship("NetworkMetric", back_populates="device", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="device", cascade="all, delete-orphan")

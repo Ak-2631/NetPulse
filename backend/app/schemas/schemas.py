@@ -7,6 +7,7 @@ class DeviceBase(BaseModel):
     mac_address: Optional[str] = None
     hostname: Optional[str] = None
     status: str
+    is_in_latest_scan: bool = True
 
 class DeviceCreate(DeviceBase):
     pass
