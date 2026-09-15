@@ -31,7 +31,7 @@ export default function Alerts() {
   };
 
   const filteredAlerts = alerts.filter(a => {
-    if (filter === 'current') return !a.resolved;
+    if (filter === 'current') return !a.resolved && a.is_device_active;
     if (filter === 'history') return true;
     return true;
   });

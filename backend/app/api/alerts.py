@@ -21,6 +21,7 @@ def get_alerts(status: str = "all", db: Session = Depends(get_db)):
         # Join device info manually or let Pydantic handle it.
         device = db.query(models.Device).filter(models.Device.id == a.device_id).first()
         dev_ip = device.ip_address if device else "System"
+        is_active = device.is_in_latest_scan if device else True
         
         result.append({
             "id": a.id,
@@ -30,7 +31,8 @@ def get_alerts(status: str = "all", db: Session = Depends(get_db)):
             "severity": a.severity,
             "message": a.message,
             "acknowledged": a.acknowledged,
-            "resolved": a.resolved
+            "resolved": a.resolved,
+            "is_device_active": is_active
         })
     return result
 
