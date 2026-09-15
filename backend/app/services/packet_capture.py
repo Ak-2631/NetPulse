@@ -13,14 +13,20 @@ class PacketSniffer:
     def __init__(self):
         self._running = False
         self._thread = None
+        self._current_network_id = "default"
 
     def start(self):
         if self._running:
             return
+            
+        from app.services.system_info import get_system_network_info
+        sys_info = get_system_network_info()
+        self._current_network_id = f"{sys_info.get('subnet')}_{sys_info.get('default_gateway')}"
+        
         self._running = True
         self._thread = threading.Thread(target=self._sniff_loop, daemon=True)
         self._thread.start()
-        logger.info("Packet capture started.")
+        logger.info(f"Packet capture started for network {self._current_network_id}.")
 
     def stop(self):
         self._running = False
@@ -70,7 +76,8 @@ class PacketSniffer:
                 protocol=proto_name,
                 source_port=random.randint(1024, 65535) if proto_name in ["TCP", "UDP"] else None,
                 destination_port=random.choice([80, 443, 53, 22, 3389]) if proto_name in ["TCP", "UDP"] else None,
-                length=random.randint(64, 1500)
+                length=random.randint(64, 1500),
+                network_id=self._current_network_id
             )
             db.add(db_packet)
             
@@ -124,7 +131,8 @@ class PacketSniffer:
                 protocol=proto_name,
                 source_port=src_port,
                 destination_port=dst_port,
-                length=length
+                length=length,
+                network_id=self._current_network_id
             )
             db.add(db_packet)
             

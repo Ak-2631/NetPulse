@@ -26,15 +26,29 @@ def stop_capture():
 def capture_status():
     return {"is_running": sniffer_instance.is_running()}
 
+from app.services.system_info import get_system_network_info
+
+def get_current_network_id():
+    sys_info = get_system_network_info()
+    return f"{sys_info.get('subnet')}_{sys_info.get('default_gateway')}"
+
 @router.get("/recent")
-def get_recent_packets(limit: int = 100, db: Session = Depends(get_db)):
-    packets = db.query(models.Packet).order_by(models.Packet.timestamp.desc()).limit(limit).all()
+def get_recent_packets(view: str = "current", limit: int = 100, db: Session = Depends(get_db)):
+    query = db.query(models.Packet)
+    if view == "current":
+        net_id = get_current_network_id()
+        query = query.filter(models.Packet.network_id == net_id)
+    packets = query.order_by(models.Packet.timestamp.desc()).limit(limit).all()
     return packets
 
 @router.get("/stats")
-def get_packet_stats(db: Session = Depends(get_db)):
-    # Group by protocol
-    stats = db.query(models.Packet.protocol, func.count(models.Packet.id)).group_by(models.Packet.protocol).all()
+def get_packet_stats(view: str = "current", db: Session = Depends(get_db)):
+    query = db.query(models.Packet.protocol, func.count(models.Packet.id)).group_by(models.Packet.protocol)
+    if view == "current":
+        net_id = get_current_network_id()
+        query = query.filter(models.Packet.network_id == net_id)
+        
+    stats = query.all()
     total_packets = sum(count for _, count in stats)
     
     result = []

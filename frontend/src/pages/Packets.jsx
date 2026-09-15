@@ -9,42 +9,58 @@ export default function Packets() {
   const [isRunning, setIsRunning] = useState(false);
   const [packets, setPackets] = useState([]);
   const [stats, setStats] = useState({ total: 0, distribution: [] });
-
-  const fetchData = async () => {
-    try {
-      const [statusRes, pktsRes, statsRes] = await Promise.all([
-        getPacketStatus(),
-        getRecentPackets(),
-        getPacketStats()
-      ]);
-      setIsRunning(statusRes.data.is_running);
-      setPackets(pktsRes.data);
-      setStats(statsRes.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  const [view, setView] = useState('current');
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statusRes, pktsRes, statsRes] = await Promise.all([
+          getPacketStatus(),
+          getRecentPackets(view),
+          getPacketStats(view)
+        ]);
+        setIsRunning(statusRes.data.is_running);
+        setPackets(pktsRes.data);
+        setStats(statsRes.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
     fetchData();
     const interval = setInterval(fetchData, 3000); // Polling for packets
     return () => clearInterval(interval);
-  }, []);
+  }, [view]);
 
   const handleStart = async () => {
     await startCapture();
-    fetchData();
+    // Force a fetch, could extract fetchData but useEffect handles interval
   };
 
   const handleStop = async () => {
     await stopCapture();
-    fetchData();
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Packet Analyzer</h2>
+        <div className="flex items-center space-x-6">
+          <h2 className="text-3xl font-bold">Packet Analyzer</h2>
+          <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+            <button 
+              onClick={() => setView('current')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'current' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              Live Capture
+            </button>
+            <button 
+              onClick={() => setView('history')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              History
+            </button>
+          </div>
+        </div>
         <div className="flex space-x-3">
           {!isRunning ? (
             <button onClick={handleStart} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">

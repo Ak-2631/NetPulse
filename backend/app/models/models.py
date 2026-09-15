@@ -38,6 +38,7 @@ class Packet(Base):
     source_port = Column(Integer, nullable=True)
     destination_port = Column(Integer, nullable=True)
     length = Column(Integer)
+    network_id = Column(String, index=True, default="default")
 
 class Alert(Base):
     __tablename__ = "alerts"

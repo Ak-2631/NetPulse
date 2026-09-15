@@ -23,8 +23,8 @@ export const acknowledgeAlert = (id) => api.patch(`/alerts/${id}/acknowledge`);
 export const startCapture = () => api.post('/packets/start');
 export const stopCapture = () => api.post('/packets/stop');
 export const getPacketStatus = () => api.get('/packets/status');
-export const getRecentPackets = () => api.get('/packets/recent');
-export const getPacketStats = () => api.get('/packets/stats');
+export const getRecentPackets = (view = 'current') => api.get(`/packets/recent?view=${view}`);
+export const getPacketStats = (view = 'current') => api.get(`/packets/stats?view=${view}`);
 
 export const getTopology = (view = 'current') => api.get(`/topology?view=${view}`);
 
