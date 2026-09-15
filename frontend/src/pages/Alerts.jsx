@@ -4,7 +4,7 @@ import { ShieldAlert, CheckCircle, Clock, Server } from 'lucide-react';
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('current');
 
   const fetchAlerts = async () => {
     try {
@@ -31,27 +31,28 @@ export default function Alerts() {
   };
 
   const filteredAlerts = alerts.filter(a => {
-    if (filter === 'unacknowledged') return !a.acknowledged;
-    if (filter === 'active') return !a.resolved;
+    if (filter === 'current') return !a.resolved;
+    if (filter === 'history') return true;
     return true;
   });
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold">Alerts</h2>
-        <div className="flex space-x-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
-          {['all', 'active', 'unacknowledged'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium capitalize transition-colors ${
-                filter === f ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <h2 className="text-3xl font-bold">Network Alerts</h2>
+        <div className="flex bg-slate-900 border border-slate-800 rounded-lg p-1">
+          <button 
+            onClick={() => setFilter('current')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'current' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            Current Alerts
+          </button>
+          <button 
+            onClick={() => setFilter('history')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'history' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            History
+          </button>
         </div>
       </div>
 
